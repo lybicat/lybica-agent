@@ -1,0 +1,22 @@
+{
+  "name": "lybica-agent",
+  "version": "1.0.0",
+  "description": "agent daemon",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lybicat/lybica-agent.git"
+  },
+  "author": "Zhang Yu",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lybicat/lybica-agent/issues"
+  },
+  "homepage": "https://github.com/lybicat/lybica-agent#readme",
+  "dependencies": {
+    "socket.io-client": "^1.3.7"
+  }
+}
