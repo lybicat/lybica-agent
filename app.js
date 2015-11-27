@@ -14,35 +14,50 @@ function Agent() {
   };
 }
 
+Agent.prototype.canRun = function(task) {
+  if (agent.runners.all === agent.runners.running) {
+    console.log('no more runners available');
+    return false;
+  }
+  var taskLabels = task.labels || [];
+  return taskLabels.filter(function(l) {
+    return config.LABELS.indexOf(l) < 0;
+  }).length === 0;
+};
+
 Agent.prototype.run = function(task) {
   console.log('run task: %j', task);
+  agent.runners.running += 1;
+  process.env.TASK_ID = task._id;
+  var runner = spawn('python', ['-m', 'lybica']);
+
+  runner.stdout.on('data', function(data) {
+    console.log('stdout: ' + data);
+  });
+
+  runner.stderr.on('data', function(data) {
+    console.log('stderr: ' + data);
+  });
+
+  runner.on('close', function(code) {
+    console.log('Exit Code: ' + code);
+    agent.runners.running -= 1;
+  });
 };
 
 
 var agent = new Agent();
-
 
 socket.on('connect', function() {
   socket.emit('agent', agent);
 });
 
 socket.on('task', function(task) {
-  console.log(task);
-  if (agent.runners.all === agent.runners.running) {
-    console.log('no more runners available');
-    return;
-  }
-  var taskLabels = task.labels || [];
-  var labelMatched = taskLabels.filter(function(l) {
-    return config.LABELS.indexOf(l) < 0;
-  }).length === 0;
-
-  if (labelMatched) {
-    agent.runners.running += 1;
+  if (agent.canRun(task)) {
     agent.run(task);
-    agent.runners.running -= 1;
   }
 });
 
 socket.on('disconnect', function() {
 });
+
