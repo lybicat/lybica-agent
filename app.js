@@ -1,3 +1,6 @@
+/* jshint node: true */
+'use strict';
+
 var os = require('os');
 var config = require('./config');
 var socket = require('socket.io-client')(config.SERVER_ADDR);
