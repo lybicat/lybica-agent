@@ -3,7 +3,6 @@
 
 var os = require('os');
 var config = require('./config');
-var socket = require('socket.io-client')(config.SERVER_ADDR);
 var spawn = require('child_process').spawn;
 
 
@@ -28,7 +27,7 @@ Agent.prototype.canRun = function(task) {
   }).length === 0;
 };
 
-Agent.prototype.run = function(task) {
+Agent.prototype.run = function(task, callback) {
   console.log('run task: %j', task);
   agent.runners.running += 1;
   process.env.TASK_ID = task._id;
@@ -45,22 +44,31 @@ Agent.prototype.run = function(task) {
   runner.on('close', function(code) {
     console.log('Exit Code: ' + code);
     agent.runners.running -= 1;
+    callback();
   });
 };
 
 
 var agent = new Agent();
 
+var socket = require('socket.io-client')(config.SERVER_ADDR);
+
+console.log('start lybica agent, try to connect to "%s"', config.SERVER_ADDR);
+
 socket.on('connect', function() {
+  console.log('connected! update agent status');
   socket.emit('agent', agent);
 });
 
 socket.on('task', function(task) {
   if (agent.canRun(task)) {
-    agent.run(task);
+    agent.run(task, function() {
+      socket.emit('done');
+    });
   }
 });
 
 socket.on('disconnect', function() {
+  console.log('agent disconnected!');
 });
 
