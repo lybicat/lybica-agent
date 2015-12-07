@@ -2,9 +2,21 @@
 'use strict';
 
 var os = require('os');
+var fs = require('fs');
 var config = require('./config');
 var spawn = require('child_process').spawn;
+var moment = require('moment');
 
+// TODO: extra requirements:
+// 1. lybica module should be in PYTHONPATH
+// 2. LYBICA_API_URL
+// 3. LYBICA_HDFS_URL
+delete process.env.http_proxy;
+delete process.env.https_proxy;
+
+process.env.LYBICA_API_URL = config.LYBICA_API_URL;
+process.env.LYBICA_HDFS_URL = config.LYBICA_HDFS_URL;
+process.env.PYTHONPATH = config.PYTHONPATH;
 
 function Agent() {
   this.labels = config.LABELS;
@@ -30,21 +42,26 @@ Agent.prototype.canRun = function(task) {
 Agent.prototype.run = function(task, callback) {
   console.log('run task: %j', task);
   agent.runners.running += 1;
-  process.env.TASK_ID = task._id;
-  var runner = spawn('python', ['-m', 'lybica']);
+  process.env.TASK_ID = task._id; // set env variable TASK_ID
+  var workspace = __dirname + '/builds/' + task._id;
+  process.env.WORKSPACE = workspace;
 
-  runner.stdout.on('data', function(data) {
-    console.log('stdout: ' + data);
-  });
+  fs.mkdir(workspace, function(err) {
+    if (err) return callback(err);
 
-  runner.stderr.on('data', function(data) {
-    console.log('stderr: ' + data);
-  });
+    var consoleStream = fs.createWriteStream(workspace + '/console_' + moment().format('YYYYMMDDHHmmss') + '.txt');
 
-  runner.on('close', function(code) {
-    console.log('Exit Code: ' + code);
-    agent.runners.running -= 1;
-    callback();
+    var runner = spawn('python', ['-m', 'lybica']);
+
+    runner.stdout.pipe(consoleStream);
+    runner.stderr.pipe(consoleStream);
+
+    runner.on('close', function(code) {
+      console.log('Exit Code: ' + code);
+      // TODO: cleanup workspace
+      agent.runners.running -= 1;
+      callback(null, code);
+    });
   });
 };
 
@@ -62,7 +79,14 @@ socket.on('connect', function() {
 
 socket.on('task', function(task) {
   if (agent.canRun(task)) {
-    agent.run(task, function() {
+    console.log('start to run task "%s"', task._id);
+    socket.emit('start');
+    agent.run(task, function(err, exitCode) {
+      if (err) {
+        socket.emit('error', err);
+        return;
+      }
+      console.log('task "%s" done with exit code "%d"', task._id, exitCode);
       socket.emit('done');
     });
   }
