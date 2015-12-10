@@ -92,6 +92,13 @@ socket.on('task', function(task) {
   }
 });
 
+socket.on('console', function(msg) {
+  console.log('got console event for task %s', msg.task);
+  if (socket.id !== msg.from) {
+    socket.emit('data', {to: msg.from, data: 'hello world'});
+  }
+});
+
 socket.on('disconnect', function() {
   console.log('agent disconnected!');
 });
