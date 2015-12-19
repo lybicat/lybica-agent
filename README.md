@@ -8,4 +8,4 @@ The main features of `lybica-agent` includes:
 * fetch task from lybica-platform, and run the task
 * forward task console output to end user
 
-In technique, it is a `socket.io` client service.
+In technical point of view, it is a `socket.io` client service.
