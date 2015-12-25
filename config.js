@@ -8,6 +8,6 @@ exports.LABELS = (process.env.AGENT_LABELS || '').split(',');
 exports.RUNNERS = parseInt(process.env.AGENT_RUNNERS) || os.cpus().length;
 
 
-exports.LYBICA_API_URL = 'http://127.0.0.1/api';
-exports.LYBICA_HDFS_URL = 'http://127.0.0.1:3001/hdfs';
-exports.PYTHONPATH = __dirname + '/../' + 'lybica-runner/src';
+exports.LYBICA_API_URL = process.env.LYBICA_API_URL || 'http://127.0.0.1/api';
+exports.LYBICA_HDFS_URL = process.env.LYBICA_HDFS_URL || 'http://127.0.0.1:3001/hdfs';
+exports.PYTHONPATH = __dirname + '/../' + 'runner/src';
