@@ -28,3 +28,6 @@ node_modules
 
 # VIM temp files
 *.swp
+
+# ctags files
+.tags
