@@ -31,6 +31,7 @@ function Agent() {
 }
 
 Agent.prototype.canRun = function(task) {
+  // TODO: agent ip should match task ctrl pc ip
   if (agent.runners.all === agent.runners.running) {
     console.log('no more runners available');
     return false;
@@ -88,14 +89,14 @@ socket.on('connect', function() {
 socket.on('task', function(task) {
   if (agent.canRun(task)) {
     console.log('start to run task "%s"', task._id);
-    socket.emit('start');
+    socket.emit('start', task);
     agent.run(task, function(err, exitCode) {
       if (err) {
         socket.emit('error', err);
         return;
       }
       console.log('task "%s" done with exit code "%d"', task._id, exitCode);
-      socket.emit('done');
+      socket.emit('done', task);
     });
   }
 });
