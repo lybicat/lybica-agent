@@ -5,7 +5,7 @@ var os = require('os');
 var fs = require('fs');
 var config = require('./config');
 var spawn = require('child_process').spawn;
-var _ = require('lodash-node');
+var _ = require('lodash');
 var Tail = require('tail').Tail;
 
 // TODO: extra requirements:
