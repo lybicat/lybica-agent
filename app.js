@@ -7,6 +7,9 @@ var config = require('./config');
 var spawn = require('child_process').spawn;
 var _ = require('lodash');
 var Tail = require('tail').Tail;
+var log4js = require('log4js');
+log4js.configure(config.LOG4JS_SETTINGS);
+var logger = log4js.getLogger('agent');
 
 // TODO: extra requirements:
 // 1. lybica module should be in PYTHONPATH
@@ -33,7 +36,7 @@ function Agent() {
 Agent.prototype.canRun = function(task) {
   // TODO: agent ip should match task ctrl pc ip
   if (agent.runners.all === agent.runners.running) {
-    console.log('no more runners available');
+    logger.warn('no more runners available');
     return false;
   }
   var taskLabels = task.labels || [];
@@ -43,7 +46,7 @@ Agent.prototype.canRun = function(task) {
 };
 
 Agent.prototype.run = function(task, callback) {
-  console.log('run task: %j', task);
+  logger.info('run task: %j', task);
   var taskId = task._id;
   agent.runners.running += 1;
   process.env.TASK_ID = taskId; // set env variable TASK_ID
@@ -53,7 +56,10 @@ Agent.prototype.run = function(task, callback) {
   agent.tasks.push({id: taskId, consoletxt: consoleTxt}); // save task into agent tasks
 
   fs.mkdir(workspace, function(err) {
-    if (err) return callback(err);
+    if (err) {
+      socket.emit('error', err);
+      logger.error('failed to create workspace "%s", error: %s', workspace, err);
+    }
 
     var consoleStream = fs.createWriteStream(consoleTxt);
 
@@ -63,8 +69,8 @@ Agent.prototype.run = function(task, callback) {
     runner.stderr.pipe(consoleStream);
 
     runner.on('close', function(code) {
-      // TODO: cleanup workspace
-      console.log('Exit Code: ' + code);
+      // TODO: cleanup workspace if code is 0
+      logger.info('Exit Code: ' + code);
       _.remove(agent.tasks, function(e) {
         return e.id === taskId;
       });
@@ -79,33 +85,33 @@ var agent = new Agent();
 
 var socket = require('socket.io-client')(config.SERVER_ADDR);
 
-console.log('start lybica agent, try to connect to "%s"', config.SERVER_ADDR);
+logger.info('start lybica agent, try to connect to "%s"', config.SERVER_ADDR);
 
 socket.on('connect', function() {
-  console.log('connected! update agent status');
+  logger.info('connected! update agent status');
   socket.emit('agent', agent);
 });
 
 socket.on('task', function(task) {
   if (agent.canRun(task)) {
-    console.log('start to run task "%s"', task._id);
+    logger.info('start to run task "%s"', task._id);
     socket.emit('start', task);
     agent.run(task, function(err, exitCode) {
       if (err) {
         socket.emit('error', err);
         return;
       }
-      console.log('task "%s" done with exit code "%d"', task._id, exitCode);
+      logger.info('task "%s" done with exit code "%d"', task._id, exitCode);
       socket.emit('done', task);
     });
   }
 });
 
 socket.on('console', function(msg) {
-  console.log('got console event for task %s', msg.task);
+  logger.info('got console event for task %s', msg.task);
   var task = _.find(agent.tasks, {id: msg.task});
   if (task === undefined) {
-    console.log('cannot find task %s', msg.task);
+    logger.warn('cannot find task %s', msg.task);
     return;
   }
   // READ from console file
@@ -128,6 +134,6 @@ socket.on('console', function(msg) {
 });
 
 socket.on('disconnect', function() {
-  console.log('agent disconnected by remote server!');
+  logger.info('agent disconnected by remote server!');
 });
 
